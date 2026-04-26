@@ -28,8 +28,8 @@ extension TopLevel {
 enum Binding {
   case bind(name: String, expr: Expr, span: Span)
   case destructure(names: [String], expr: Expr, span: Span)
-  // `@name = expr` inside a `where` block.
   case coordBind(coord: String, expr: Expr, span: Span)
+  case funcBind(name: String, params: [String], body: Expr, span: Span)
 }
 
 extension Binding {
@@ -38,10 +38,10 @@ extension Binding {
     case .bind(_, _, let s): return s
     case .destructure(_, _, let s): return s
     case .coordBind(_, _, let s): return s
+    case .funcBind(_, _, _, let s): return s
     }
   }
 }
-
 indirect enum Expr {
   case number(Float, span: Span)
   case string(String, span: Span)

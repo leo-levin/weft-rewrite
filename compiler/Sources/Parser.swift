@@ -26,31 +26,31 @@ extension InfixOp {
   var prec: Int {
     switch self {
     case .binary(_, let p, _): return p
-    case .call(let p):         return p
-    case .index(let p):        return p
+    case .call(let p): return p
+    case .index(let p): return p
     }
   }
 }
 
 func infixOp(_ kind: TokenKind) -> InfixOp? {
   switch kind {
-  case .op(.oror):    return .binary(.or,  prec: 5,  assoc: .left)
-  case .op(.andand):  return .binary(.and, prec: 7,  assoc: .left)
-  case .op(.eqeq):    return .binary(.eq,  prec: 9,  assoc: .left)
-  case .op(.neq):     return .binary(.neq, prec: 9,  assoc: .left)
-  case .op(.lt):      return .binary(.lt,  prec: 9,  assoc: .left)
-  case .op(.le):      return .binary(.le,  prec: 9,  assoc: .left)
-  case .op(.gt):      return .binary(.gt,  prec: 9,  assoc: .left)
-  case .op(.ge):      return .binary(.ge,  prec: 9,  assoc: .left)
-  case .op(.plus):    return .binary(.add, prec: 20, assoc: .left)
-  case .op(.minus):   return .binary(.sub, prec: 20, assoc: .left)
-  case .op(.star):    return .binary(.mul, prec: 30, assoc: .left)
-  case .op(.slash):   return .binary(.div, prec: 30, assoc: .left)
+  case .op(.oror): return .binary(.or, prec: 5, assoc: .left)
+  case .op(.andand): return .binary(.and, prec: 7, assoc: .left)
+  case .op(.eqeq): return .binary(.eq, prec: 9, assoc: .left)
+  case .op(.neq): return .binary(.neq, prec: 9, assoc: .left)
+  case .op(.lt): return .binary(.lt, prec: 9, assoc: .left)
+  case .op(.le): return .binary(.le, prec: 9, assoc: .left)
+  case .op(.gt): return .binary(.gt, prec: 9, assoc: .left)
+  case .op(.ge): return .binary(.ge, prec: 9, assoc: .left)
+  case .op(.plus): return .binary(.add, prec: 20, assoc: .left)
+  case .op(.minus): return .binary(.sub, prec: 20, assoc: .left)
+  case .op(.star): return .binary(.mul, prec: 30, assoc: .left)
+  case .op(.slash): return .binary(.div, prec: 30, assoc: .left)
   case .op(.percent): return .binary(.mod, prec: 30, assoc: .left)
-  case .op(.caret):   return .binary(.pow, prec: 40, assoc: .right)
-  case .lparen:       return .call(prec: 60)
-  case .index(_):     return .index(prec: 70)
-  default:            return nil
+  case .op(.caret): return .binary(.pow, prec: 40, assoc: .right)
+  case .lparen: return .call(prec: 60)
+  case .index(_): return .index(prec: 70)
+  default: return nil
   }
 }
 
@@ -60,7 +60,7 @@ func infixOp(_ kind: TokenKind) -> InfixOp? {
 /// so it will.
 func rightBindingPower(prec: Int, assoc: Associativity) -> Int {
   switch assoc {
-  case .left:  return prec + 1
+  case .left: return prec + 1
   case .right: return prec - 1
   }
 }
@@ -149,10 +149,11 @@ struct Parser {
       let body = try parseExpr()
       let endTok = current
       try expect(.semicolon)
-      return .destructure(DestructureDef(
-        names: names,
-        body: body,
-        span: .merge(startTok.span, endTok.span)))
+      return .destructure(
+        DestructureDef(
+          names: names,
+          body: body,
+          span: .merge(startTok.span, endTok.span)))
     }
 
     // Function or signal def: `name(params) = expr;` or `name = expr;`
@@ -164,7 +165,7 @@ struct Parser {
       if currentKind == .rparen {
         throw error(
           "function must declare at least one parameter; "
-          + "use signal form 'name = expr' instead")
+            + "use signal form 'name = expr' instead")
       }
       params = try parseNameList()
       try expect(.rparen)
@@ -190,11 +191,12 @@ struct Parser {
 
     let endTok = current
     try expect(.semicolon)
-    return .def(Def(
-      name: name,
-      params: params,
-      body: finalBody,
-      span: .merge(startTok.span, endTok.span)))
+    return .def(
+      Def(
+        name: name,
+        params: params,
+        body: finalBody,
+        span: .merge(startTok.span, endTok.span)))
   }
 
   // MARK: Bindings
@@ -212,7 +214,6 @@ struct Parser {
 
   mutating func parseBinding() throws -> Binding {
     let startTok = current
-
     if currentKind == .lparen {
       advance()
       let names = try parseNameList()
@@ -224,7 +225,6 @@ struct Parser {
         expr: expr,
         span: .merge(startTok.span, expr.span))
     }
-
     if case .coord = currentKind {
       let coord = try expectCoord()
       try expect(.equals)
@@ -234,8 +234,19 @@ struct Parser {
         expr: expr,
         span: .merge(startTok.span, expr.span))
     }
-
     let name = try expectName()
+    if currentKind == .lparen {
+      advance()
+      let params = try parseNameList()
+      try expect(.rparen)
+      try expect(.equals)
+      let body = try parseExpr()
+      return .funcBind(
+        name: name,
+        params: params,
+        body: body,
+        span: .merge(startTok.span, body.span))
+    }
     try expect(.equals)
     let expr = try parseExpr()
     return .bind(

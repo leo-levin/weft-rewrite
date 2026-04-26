@@ -88,6 +88,9 @@ func prettyPrintExpr(_ expr: Expr, indent: Int) {
 func prettyPrintBinding(_ binding: Binding, indent: Int) {
   let pad = String(repeating: " ", count: indent)
   switch binding {
+  case .funcBind(let name, let params, let body, _):
+    print("\(pad)\(name)(\(params.joined(separator: ", "))) =")
+    prettyPrintExpr(body, indent: indent + 2)
   case .bind(let name, let expr, _):
     print("\(pad)\(name) =")
     prettyPrintExpr(expr, indent: indent + 2)
@@ -99,5 +102,40 @@ func prettyPrintBinding(_ binding: Binding, indent: Int) {
   case .coordBind(let coord, let expr, _):
     print("\(pad)@\(coord) =")
     prettyPrintExpr(expr, indent: indent + 2)
+  }
+}
+
+func prettyPrintIR(_ program: IRProgram) {
+  print("=== IR ===")
+  print("Nodes:")
+  for (id, node) in program.builder.nodes.enumerated() {
+    print("  \(id): \(prettyIRNode(node))")
+  }
+  print("Roots:")
+  for (name, id) in program.roots {
+    print("  \(name) = \(id)")
+  }
+}
+
+func prettyIRNode(_ node: IRNode) -> String {
+  switch node {
+  case .num(let f):
+    return "num(\(f))"
+  case .coord(let c):
+    return "coord(@\(c))"
+  case .buffer(let id, let indices):
+    return "buffer(\(id), [\(indices.map { "\($0)" }.joined(separator: ", "))])"
+  case .tuple(let ids):
+    return "tuple(\(ids.map { "\($0)" }.joined(separator: ", ")))"
+  case .index(let id, let i):
+    return "index(\(id), \(i))"
+  case .binOp(let op, let lhs, let rhs):
+    return "binOp(\(op), \(lhs), \(rhs))"
+  case .unOp(let op, let expr):
+    return "unOp(\(op), \(expr))"
+  case .ifExpr(let cond, let then, let else_):
+    return "ifExpr(cond: \(cond), then: \(then), else: \(else_))"
+  case .whereBind(let lhs, let bound, let body):
+    return "whereBind(\(lhs), bound: \(bound), body: \(body))"
   }
 }
