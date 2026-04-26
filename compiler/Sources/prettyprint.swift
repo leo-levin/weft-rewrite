@@ -1,4 +1,9 @@
-// PrettyPrint.swift
+// prettyprint.swift
+//
+// Indented dump of a parsed AST, used for eyeballing parser output.
+// Spans are intentionally not printed — they'd dominate the output.
+// Operator and coord names print as their source spelling via the
+// `symbol` / raw-string accessors.
 
 func prettyPrint(_ program: [TopLevel]) {
   for node in program {
@@ -6,7 +11,7 @@ func prettyPrint(_ program: [TopLevel]) {
     case .def(let d):
       prettyPrintDef(d)
     case .destructure(let d):
-      print("(\(d.names.joined(separator: ", "))) = ")
+      print("(\(d.names.joined(separator: ", "))) =")
       prettyPrintExpr(d.body, indent: 2)
     }
     print("")
@@ -25,35 +30,44 @@ func prettyPrintDef(_ d: Def) {
 func prettyPrintExpr(_ expr: Expr, indent: Int) {
   let pad = String(repeating: " ", count: indent)
   switch expr {
-  case .number(let f):
+  case .number(let f, _):
     print("\(pad)number \(f)")
-  case .string(let s):
+
+  case .string(let s, _):
     print("\(pad)string \"\(s)\"")
-  case .name(let s):
+
+  case .name(let s, _):
     print("\(pad)name \(s)")
-  case .coord(let s):
-    print("\(pad)coord @\(s)")
-  case .tuple(let elems):
+
+  case .coord(let c, _):
+    print("\(pad)coord @\(c)")
+
+  case .tuple(let elems, _):
     print("\(pad)tuple")
     for e in elems { prettyPrintExpr(e, indent: indent + 2) }
-  case .call(let fn, let args):
+
+  case .call(let fn, let args, _):
     print("\(pad)call")
     prettyPrintExpr(fn, indent: indent + 2)
     if !args.isEmpty {
       print("\(pad)  args")
       for a in args { prettyPrintExpr(a, indent: indent + 4) }
     }
-  case .index(let expr, let i):
+
+  case .index(let expr, let i, _):
     print("\(pad)index .\(i)")
     prettyPrintExpr(expr, indent: indent + 2)
-  case .binOp(let op, let lhs, let rhs):
-    print("\(pad)binOp \(op)")
+
+  case .binOp(let op, let lhs, let rhs, _):
+    print("\(pad)binOp \(op.symbol)")
     prettyPrintExpr(lhs, indent: indent + 2)
     prettyPrintExpr(rhs, indent: indent + 2)
-  case .unOp(let op, let expr):
-    print("\(pad)unOp \(op)")
+
+  case .unOp(let op, let expr, _):
+    print("\(pad)unOp \(op.symbol)")
     prettyPrintExpr(expr, indent: indent + 2)
-  case .ifExpr(let cond, let then, let else_):
+
+  case .ifExpr(let cond, let then, let else_, _):
     print("\(pad)if")
     print("\(pad)  cond")
     prettyPrintExpr(cond, indent: indent + 4)
@@ -61,7 +75,8 @@ func prettyPrintExpr(_ expr: Expr, indent: Int) {
     prettyPrintExpr(then, indent: indent + 4)
     print("\(pad)  else")
     prettyPrintExpr(else_, indent: indent + 4)
-  case .whereExpr(let body, let bindings):
+
+  case .whereExpr(let body, let bindings, _):
     print("\(pad)where")
     print("\(pad)  body")
     prettyPrintExpr(body, indent: indent + 4)
@@ -73,11 +88,16 @@ func prettyPrintExpr(_ expr: Expr, indent: Int) {
 func prettyPrintBinding(_ binding: Binding, indent: Int) {
   let pad = String(repeating: " ", count: indent)
   switch binding {
-  case .bind(let name, let expr):
+  case .bind(let name, let expr, _):
     print("\(pad)\(name) =")
     prettyPrintExpr(expr, indent: indent + 2)
-  case .destructure(let names, let expr):
+
+  case .destructure(let names, let expr, _):
     print("\(pad)(\(names.joined(separator: ", "))) =")
+    prettyPrintExpr(expr, indent: indent + 2)
+
+  case .coordBind(let coord, let expr, _):
+    print("\(pad)@\(coord) =")
     prettyPrintExpr(expr, indent: indent + 2)
   }
 }

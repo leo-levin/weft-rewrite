@@ -1,7 +1,6 @@
 struct LexError: Error {
   let message: String
-  let line: Int
-  let column: Int
+  let loc: SourceLoc
 }
 
 struct Lexer {
@@ -14,8 +13,18 @@ struct Lexer {
     self.source = Array(source)
   }
 
+  // MARK: Position helpers
+
   var current: Character? {
     pos < source.count ? source[pos] : nil
+  }
+
+  var loc: SourceLoc {
+    SourceLoc(line: line, column: column)
+  }
+
+  func peek() -> Character? {
+    pos + 1 < source.count ? source[pos + 1] : nil
   }
 
   mutating func advance() {
@@ -28,52 +37,69 @@ struct Lexer {
     pos += 1
   }
 
-  func peek() -> Character? {
-    pos + 1 < source.count ? source[pos + 1] : nil
+  // MARK: Top-level driver
+
+  mutating func tokenize() throws -> [Token] {
+    var tokens: [Token] = []
+    while true {
+      let token = try nextToken()
+      tokens.append(token)
+      if token.kind == .eof { break }
+    }
+    return tokens
   }
 
   mutating func nextToken() throws -> Token {
     skipWhitespaceComments()
-    guard let c = current else { return .eof }
+    let start = loc
+    guard let c = current else {
+      return Token(kind: .eof, span: Span(start: start, end: start))
+    }
+    let kind = try readKind(starting: c)
+    let end = loc
+    return Token(kind: kind, span: Span(start: start, end: end))
+  }
+
+  mutating func readKind(starting c: Character) throws -> TokenKind {
     switch c {
-    case "0"..."9": return try readNumber()
-    case "a"..."z", "A"..."Z", "_": return try readName()
-    case "@": return try readCoord()
-    case "+", "-", "*", "/", "%", "^", "!", "<", ">": return try readOperator()
+    case "0"..."9":
+      return try readNumber()
+    case "a"..."z", "A"..."Z", "_":
+      return try readNameOrKeyword()
+    case "@":
+      return try readCoord()
+    case "+", "-", "*", "/", "%", "^", "!", "<", ">", "&", "|":
+      return try readOperator()
+    case "=":
+      return try readEquals()
+    case ".":
+      return try readDot()
+    case "\"":
+      return try readString()
     case "(":
       advance()
       return .lparen
     case ")":
       advance()
       return .rparen
-    case ",":
-      advance()
-      return .comma
-    case "=":
-      if peek() == "=" {
-        advance()
-        advance()
-        return .op("==")
-      }
-      advance()
-      return .equals
-    case ".": return try readDot()
     case "{":
       advance()
       return .lbrace
     case "}":
       advance()
       return .rbrace
+    case ",":
+      advance()
+      return .comma
     case ";":
       advance()
       return .semicolon
-    case "#":
-      advance()
-      return .hash
-    case "\"": return try readString()
-    default: throw LexError(message: "unexpected character \(c)", line: line, column: column)
+    default:
+      throw LexError(message: "unexpected character \(c)", loc: loc)
     }
   }
+
+  // MARK: Whitespace and comments
 
   mutating func skipWhitespaceComments() {
     while let c = current {
@@ -81,6 +107,7 @@ struct Lexer {
       case " ", "\t", "\n", "\r":
         advance()
       case "-" where peek() == "-":
+        // Line comment: consume up to (but not including) the newline.
         while let c = current, c != "\n" { advance() }
       default:
         return
@@ -88,7 +115,9 @@ struct Lexer {
     }
   }
 
-  mutating func readName() throws -> Token {
+  // MARK: Identifiers and keywords
+
+  mutating func readNameOrKeyword() throws -> TokenKind {
     var result = ""
     while let c = current, c.isLetter || c.isNumber || c == "_" {
       result.append(c)
@@ -99,42 +128,53 @@ struct Lexer {
     case "if": return .kwIf
     case "then": return .kwThen
     case "else": return .kwElse
-    case "in": return .kwIn
     default: return .name(result)
     }
   }
 
-  mutating func readCoord() throws -> Token {
-    advance()  // consume @
-    var result = ""
-    while let c = current, c.isLetter {
-      result.append(c)
+  // MARK: Coords
+
+  mutating func readCoord() throws -> TokenKind {
+    let atLoc = loc
+    advance()  // consume '@'
+    var name = ""
+    while let c = current, c.isLetter || c.isNumber || c == "_" {
+      name.append(c)
       advance()
     }
-    if result.isEmpty {
-      throw LexError(message: "expected coordinate name after @", line: line, column: column)
+    if name.isEmpty {
+      throw LexError(message: "expected coord name after @", loc: atLoc)
     }
-    return .coord(result)
+    return .coord(name)
   }
 
-  mutating func readNumber() throws -> Token {
-    var result = ""
+  // MARK: Numbers
+
+  mutating func readNumber() throws -> TokenKind {
+    let startLoc = loc
+    var text = ""
     while let c = current, c.isNumber {
-      result.append(c)
+      text.append(c)
       advance()
     }
     if current == ".", let next = peek(), next.isNumber {
-      result.append(".")
+      text.append(".")
       advance()
       while let c = current, c.isNumber {
-        result.append(c)
+        text.append(c)
         advance()
       }
     }
-    return .number(Float(result)!)
+    guard let value = Float(text) else {
+      throw LexError(message: "invalid number literal '\(text)'", loc: startLoc)
+    }
+    return .number(value)
   }
 
-  mutating func readString() throws -> Token {
+  // MARK: Strings
+
+  mutating func readString() throws -> TokenKind {
+    let startLoc = loc
     advance()  // consume opening "
     var result = ""
     while let c = current, c != "\"" {
@@ -142,64 +182,108 @@ struct Lexer {
       advance()
     }
     guard current == "\"" else {
-      throw LexError(message: "unterminated string", line: line, column: column)
+      throw LexError(message: "unterminated string literal", loc: startLoc)
     }
     advance()  // consume closing "
     return .string(result)
   }
 
-  mutating func readDot() throws -> Token {
-    advance()  // consume .
+  // MARK: Operators
 
-    if current == "." {
+  mutating func readOperator() throws -> TokenKind {
+    let c = current!
+    let next = peek()
+
+    // Two-character operators take priority over their one-char prefixes.
+    switch (c, next) {
+    case ("=", "="):
       advance()
-      return .dotdot
+      advance()
+      return .op(.eqeq)
+    case ("!", "="):
+      advance()
+      advance()
+      return .op(.neq)
+    case ("<", "="):
+      advance()
+      advance()
+      return .op(.le)
+    case (">", "="):
+      advance()
+      advance()
+      return .op(.ge)
+    case ("&", "&"):
+      advance()
+      advance()
+      return .op(.andand)
+    case ("|", "|"):
+      advance()
+      advance()
+      return .op(.oror)
+    default: break
     }
 
-    if current == "-" {
-      advance()  // consume -
-      var result = ""
-      while let c = current, c.isNumber {
-        result.append(c)
-        advance()
-      }
-      if result.isEmpty {
-        throw LexError(message: "expected digit after .-", line: line, column: column)
-      }
-      return .index(-Int(result)!)
+    advance()
+    switch c {
+    case "+": return .op(.plus)
+    case "-": return .op(.minus)
+    case "*": return .op(.star)
+    case "/": return .op(.slash)
+    case "%": return .op(.percent)
+    case "^": return .op(.caret)
+    case "!": return .op(.bang)
+    case "<": return .op(.lt)
+    case ">": return .op(.gt)
+    case "&", "|":
+      throw LexError(
+        message: "unexpected '\(c)' (did you mean '\(c)\(c)'?)",
+        loc: loc)
+    default:
+      throw LexError(message: "internal: unhandled operator '\(c)'", loc: loc)
     }
-    if current?.isNumber == true {
-      var result = ""
-      while let c = current, c.isNumber {
-        result.append(c)
-        advance()
-      }
-      return .index(Int(result)!)
-    }
-    throw LexError(message: "expected digit after .", line: line, column: column)
   }
 
-  mutating func readOperator() throws -> Token {
-    let c = current!
-    if let next = peek() {
-      let two = String([c, next])
-      if ["==", "!=", "<=", ">=", "&&", "||"].contains(two) {
-        advance()
-        advance()
-        return .op(two)
-      }
+  /// `=` alone is the assignment punctuation; `==` is an operator.
+  mutating func readEquals() throws -> TokenKind {
+    if peek() == "=" {
+      advance()
+      advance()
+      return .op(.eqeq)
     }
     advance()
-    return .op(String(c))
+    return .equals
   }
 
-  mutating func tokenize() throws -> [Token] {
-    var tokens: [Token] = []
-    while true {
-      let t = try nextToken()
-      tokens.append(t)
-      if t == .eof { break }
+  // MARK: Dot-prefixed tokens (postfix index)
+
+  /// `.0`, `.42`, `.-3`. Bare `.` and `..` are not valid tokens.
+  mutating func readDot() throws -> TokenKind {
+    let dotLoc = loc
+    advance()  // consume '.'
+
+    var negative = false
+    if current == "-" {
+      negative = true
+      advance()
     }
-    return tokens
+
+    var digits = ""
+    while let c = current, c.isNumber {
+      digits.append(c)
+      advance()
+    }
+
+    if digits.isEmpty {
+      let hint =
+        negative
+        ? "expected digits after '.-'"
+        : "expected digits after '.'"
+      throw LexError(message: hint, loc: dotLoc)
+    }
+
+    guard let value = Int(digits) else {
+      throw LexError(message: "invalid index literal '\(digits)'", loc: dotLoc)
+    }
+    return .index(negative ? -value : value)
   }
 }
