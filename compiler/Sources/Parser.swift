@@ -4,9 +4,11 @@
 // `infixOp(_:)` is the single dispatch table for infix-position parsing
 // — both `parseExpr` and `applyInfix` consult it.
 
-struct ParseError: Error {
-  let message: String
-  let loc: SourceLoc
+import WeftIR
+
+public struct ParseError: Error {
+  public let message: String
+  public let loc: SourceLoc
 }
 
 // MARK: - Pratt dispatch

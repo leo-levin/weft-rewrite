@@ -1,11 +1,13 @@
+import WeftIR
+
 struct FuncDef {
   let params: [String]
   let body: Expr
 }
 
-struct LoweringError: Error {
-  let message: String
-  let span: Span
+public struct LoweringError: Error {
+  public let message: String
+  public let span: Span
 }
 
 struct Env {
@@ -151,13 +153,6 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
     return try lower(funcDef.body, env: callEnv, builder: builder)
 
   }
-}
-
-struct IRProgram {
-  let nodes: [IRNode]
-  let roots: [(name: String, id: ID)]
-  let feedbackWrites: [(slotID: Int, valueID: ID, indexCoords: [String])]
-  let feedbackSlots: [String: (slotID: Int, indexCoords: [String])]
 }
 
 func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {

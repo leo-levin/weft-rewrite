@@ -1,8 +1,13 @@
 import Foundation
+import WeftIR
 
-struct Runtime {
-  let program: IRProgram
-  var feedbackBuffers: [Int: [Float: Float]] = [:]
+public struct Runtime {
+  public let program: IRProgram
+  public var feedbackBuffers: [Int: [Float: Float]] = [:]
+
+  public init(program: IRProgram) {
+    self.program = program
+  }
 
   func evaluate(_ id: ID, coords: [String: Float]) -> Float {
     switch program.nodes[id] {
@@ -64,7 +69,7 @@ struct Runtime {
       feedbackBuffers[write.slotID, default: [:]][key] = value
     }
   }
-  mutating func run(outputName: String, coords: [String: Float]) -> Float? {
+  public mutating func run(outputName: String, coords: [String: Float]) -> Float? {
     guard let root = program.roots.first(where: { $0.name == outputName }) else { return nil }
     let value = evaluate(root.id, coords: coords)
     writeFeedback(coords: coords)

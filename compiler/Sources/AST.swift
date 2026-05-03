@@ -1,3 +1,5 @@
+import WeftIR
+
 struct Def {
   let name: String
   let params: [String]

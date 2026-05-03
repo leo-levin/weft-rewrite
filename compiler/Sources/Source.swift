@@ -1,13 +1,12 @@
-struct SourceLoc: Equatable, Hashable {
-  let line: Int
-  let column: Int
+public struct SourceLoc: Equatable, Hashable {
+  public let line: Int
+  public let column: Int
 }
 
-struct Span: Equatable, Hashable {
-  let start: SourceLoc
-  let end: SourceLoc
+public struct Span: Equatable, Hashable {
+  public let start: SourceLoc
+  public let end: SourceLoc
 
-  /// Build a span covering both inputs. Assumes `a` precedes `b` in the source.
   static func merge(_ a: Span, _ b: Span) -> Span {
     Span(start: a.start, end: b.end)
   }

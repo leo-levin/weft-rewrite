@@ -1,6 +1,6 @@
-struct LexError: Error {
-  let message: String
-  let loc: SourceLoc
+public struct LexError: Error {
+  public let message: String
+  public let loc: SourceLoc
 }
 
 struct Lexer {

@@ -1,3 +1,5 @@
+import WeftIR
+
 // prettyprint.swift
 //
 // Indented dump of a parsed AST, used for eyeballing parser output.
@@ -105,7 +107,7 @@ func prettyPrintBinding(_ binding: Binding, indent: Int) {
   }
 }
 
-func prettyPrintIR(_ program: IRProgram) {
+public func prettyPrintIR(_ program: IRProgram) {
   print("=== IR ===")
   print("Nodes:")
   for (id, node) in program.nodes.enumerated() {
