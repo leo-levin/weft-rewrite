@@ -154,9 +154,10 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
 }
 
 struct IRProgram {
-  let builder: IRBuilder
+  let nodes: [IRNode]
   let roots: [(name: String, id: ID)]
-  var feedbackWrites: [(slotID: Int, valueID: ID, indexCoords: [String])] { builder.feedbackWrites }
+  let feedbackWrites: [(slotID: Int, valueID: ID, indexCoords: [String])]
+  let feedbackSlots: [String: (slotID: Int, indexCoords: [String])]
 }
 
 func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
@@ -185,5 +186,10 @@ func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
     roots.append((name: name, id: id))
   }
 
-  return IRProgram(builder: builder, roots: roots)
+  return IRProgram(
+    nodes: builder.nodes,
+    roots: roots,
+    feedbackWrites: builder.feedbackWrites,
+    feedbackSlots: builder.feedbackSlots
+  )
 }

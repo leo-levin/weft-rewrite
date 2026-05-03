@@ -108,7 +108,7 @@ func prettyPrintBinding(_ binding: Binding, indent: Int) {
 func prettyPrintIR(_ program: IRProgram) {
   print("=== IR ===")
   print("Nodes:")
-  for (id, node) in program.builder.nodes.enumerated() {
+  for (id, node) in program.nodes.enumerated() {
     print("  \(id): \(prettyIRNode(node))")
   }
   print("Roots:")

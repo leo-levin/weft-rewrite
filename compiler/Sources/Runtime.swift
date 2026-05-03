@@ -5,7 +5,7 @@ struct Runtime {
   var feedbackBuffers: [Int: [Float: Float]] = [:]
 
   func evaluate(_ id: ID, coords: [String: Float]) -> Float {
-    switch program.builder.nodes[id] {
+    switch program.nodes[id] {
     case .num(let f):
       return f
     case .coord(let name):
