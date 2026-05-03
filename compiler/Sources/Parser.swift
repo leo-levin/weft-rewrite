@@ -20,6 +20,7 @@ enum InfixOp {
   case binary(BinOp, prec: Int, assoc: Associativity)
   case call(prec: Int)
   case index(prec: Int)
+  case where_(prec: Int)
 }
 
 extension InfixOp {
@@ -28,6 +29,7 @@ extension InfixOp {
     case .binary(_, let p, _): return p
     case .call(let p): return p
     case .index(let p): return p
+    case .where_(let p): return p
     }
   }
 }
@@ -48,6 +50,7 @@ func infixOp(_ kind: TokenKind) -> InfixOp? {
   case .op(.slash): return .binary(.div, prec: 30, assoc: .left)
   case .op(.percent): return .binary(.mod, prec: 30, assoc: .left)
   case .op(.caret): return .binary(.pow, prec: 40, assoc: .right)
+  case .kwWhere: return .where_(prec: 2)
   case .lparen: return .call(prec: 60)
   case .index(_): return .index(prec: 70)
   default: return nil
@@ -171,23 +174,7 @@ struct Parser {
       try expect(.rparen)
     }
     try expect(.equals)
-    let body = try parseExpr()
-
-    // Optional `where` block — wrap into a whereExpr around the body.
-    let finalBody: Expr
-    if currentKind == .kwWhere {
-      advance()
-      try expect(.lbrace)
-      let bindings = try parseBindings()
-      let rbraceTok = current
-      try expect(.rbrace)
-      finalBody = .whereExpr(
-        body: body,
-        bindings: bindings,
-        span: .merge(body.span, rbraceTok.span))
-    } else {
-      finalBody = body
-    }
+    let finalBody = try parseExpr()
 
     let endTok = current
     try expect(.semicolon)
@@ -343,6 +330,16 @@ struct Parser {
       advance()
       return .index(
         expr: left, i: i,
+        span: .merge(left.span, endTok.span))
+
+    case .where_:
+      advance()
+      try expect(.lbrace)
+      let bindings = try parseBindings()
+      let endTok = current
+      try expect(.rbrace)
+      return .whereExpr(
+        body: left, bindings: bindings,
         span: .merge(left.span, endTok.span))
     }
   }

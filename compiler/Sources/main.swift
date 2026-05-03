@@ -1,7 +1,6 @@
 let source = """
-  trail = trail * 0.95;
-  play = trail;
-
+  sig = @t * 2;
+  play = (sig where { @t = @t + 1; }) + (sig where { @t = @t + 2; });
   """
 
 do {
