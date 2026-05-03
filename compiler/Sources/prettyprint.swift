@@ -135,5 +135,7 @@ func prettyIRNode(_ node: IRNode) -> String {
     return "unOp(\(op), \(expr))"
   case .ifExpr(let cond, let then, let else_):
     return "ifExpr(cond: \(cond), then: \(then), else: \(else_))"
+  case .feedbackRead(let slotID, let indices):
+    return "feedbackRead(slot: \(slotID), [\(indices.map { "\($0)" }.joined(separator: ", "))])"
   }
 }

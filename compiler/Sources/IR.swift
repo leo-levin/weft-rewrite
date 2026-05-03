@@ -17,4 +17,5 @@ enum IRNode: Hashable {
   case binOp(BinOp, ID, ID)
   case unOp(UnOp, ID)
   case ifExpr(cond: ID, then: ID, else_: ID)
+  case feedbackRead(slotID: Int, indices: [ID])
 }

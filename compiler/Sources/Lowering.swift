@@ -12,11 +12,15 @@ struct Env {
   var names: [String: ID] = [:]
   var coords: [String: ID] = [:]
   var funcs: [String: FuncDef] = [:]
+  var resolving: [String: [String: ID]] = [:]
 }
 
 class IRBuilder {
   var nodes: [IRNode] = []
   var memo: [IRNode: ID] = [:]
+  var feedbackSlots: [String: Int] = [:]
+  var feedbackWrites: [(slotID: Int, valueID: ID)] = []
+  private var nextSlotID = 0
 
   func getNode(_ node: IRNode) -> ID {
     if let existing = memo[node] { return existing }
@@ -25,6 +29,36 @@ class IRBuilder {
     memo[node] = id
     return id
   }
+
+  func allocateSlot(for name: String) -> Int {
+    if let existing = feedbackSlots[name] { return existing }
+    let id = nextSlotID
+    nextSlotID += 1
+    feedbackSlots[name] = id
+    return id
+  }
+}
+
+func lowerSignal(_ name: String, def: FuncDef, env: Env, builder: IRBuilder) throws -> ID {
+  if let snapshot = env.resolving[name] {
+    let slotID = builder.allocateSlot(for: name)
+    let indices = env.coords.compactMap { (coord, currentID) -> ID? in
+      let rawCoord = builder.getNode(.coord(coord))
+      let snapshotID = snapshot[coord] ?? rawCoord
+      return currentID != snapshotID ? currentID : nil
+    }
+    return builder.getNode(.feedbackRead(slotID: slotID, indices: indices))
+  }
+
+  var newEnv = env
+  newEnv.resolving[name] = env.coords
+  let id = try lower(def.body, env: newEnv, builder: builder)
+  if let slotID = builder.feedbackSlots[name],
+    !builder.feedbackWrites.contains(where: { $0.slotID == slotID })
+  {
+    builder.feedbackWrites.append((slotID: slotID, valueID: id))
+  }
+  return id
 }
 
 func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
@@ -41,7 +75,7 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
   case .name(let n, _):
     if let id = env.names[n] { return id }
     if let def = env.funcs[n], def.params.isEmpty {
-      return try lower(def.body, env: env, builder: builder)
+      return try lowerSignal(n, def: def, env: env, builder: builder)
     }
     throw LoweringError(message: "unknown name '\(n)'", span: expr.span)
 
@@ -119,6 +153,7 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
 struct IRProgram {
   let builder: IRBuilder
   let roots: [(name: String, id: ID)]
+  var feedbackWrites: [(slotID: Int, valueID: ID)] { builder.feedbackWrites }
 }
 
 func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
@@ -143,7 +178,7 @@ func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
   }
 
   for name in rootNames {
-    let id = try lower(env.funcs[name]!.body, env: env, builder: builder)
+    let id = try lowerSignal(name, def: env.funcs[name]!, env: env, builder: builder)
     roots.append((name: name, id: id))
   }
 

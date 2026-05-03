@@ -1,7 +1,6 @@
 let source = """
-  sin(x)=x*x;
-  lfo = sin(@t * 0.5);
-  play = sin(440 * @t) * (lfo * 0.5 + 0.5);
+  trail = trail * 0.95;
+  play = trail;
 
   """
 
