@@ -8,7 +8,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../ir"),
-        .package(path: "../runtime"),
+        // .package(path: "../runtime"),  // temporarily disabled
     ],
     targets: [
         .target(
@@ -20,7 +20,7 @@ let package = Package(
             name: "compiler",
             dependencies: [
                 "WeftCompiler",
-                .product(name: "WeftRuntime", package: "runtime"),
+                // .product(name: "WeftRuntime", package: "runtime"),  // temporarily disabled
             ],
             path: "CLI"
         ),

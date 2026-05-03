@@ -7,7 +7,7 @@ import WeftIR
 // Operator and coord names print as their source spelling via the
 // `symbol` / raw-string accessors.
 
-func prettyPrint(_ program: [TopLevel]) {
+public func prettyPrint(_ program: [TopLevel]) {
   for node in program {
     switch node {
     case .def(let d):
@@ -15,8 +15,25 @@ func prettyPrint(_ program: [TopLevel]) {
     case .destructure(let d):
       print("(\(d.names.joined(separator: ", "))) =")
       prettyPrintExpr(d.body, indent: 2)
+    case .hem(let h):
+      prettyPrintHem(h)
     }
     print("")
+  }
+}
+
+func prettyPrintHem(_ h: HemDecl) {
+  let widthStr = h.width.map { "[\($0)]" } ?? ""
+  let argsStr = h.args.map { "\($0.0): \(prettyHemValue($0.1))" }.joined(separator: ", ")
+  print("hem #\(h.name)\(widthStr) = \(h.op)(\(argsStr))")
+}
+
+func prettyHemValue(_ v: HemValue) -> String {
+  switch v {
+  case .int(let i): return "\(i)"
+  case .float(let f): return "\(f)"
+  case .string(let s): return "\"\(s)\""
+  case .bool(let b): return b ? "true" : "false"
   }
 }
 
@@ -127,6 +144,8 @@ func prettyIRNode(_ node: IRNode) -> String {
     return "coord(@\(c))"
   case .buffer(let id, let indices):
     return "buffer(\(id), [\(indices.map { "\($0)" }.joined(separator: ", "))])"
+  case .hemRead(let name, let indices):
+    return "hemRead(\(name), [\(indices.map { "\($0)" }.joined(separator: ", "))])"
   case .tuple(let ids):
     return "tuple(\(ids.map { "\($0)" }.joined(separator: ", ")))"
   case .index(let id, let i):

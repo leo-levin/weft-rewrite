@@ -26,9 +26,13 @@ enum TokenKind: Equatable, Hashable {
   case rparen
   case lbrace
   case rbrace
+  case lbracket
+  case rbracket
   case comma
+  case colon
   case equals
   case semicolon
+  case hash
 
   // Postfix index: `.0`, `.1`, `.-2`, etc.
   case index(Int)

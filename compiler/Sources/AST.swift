@@ -1,21 +1,41 @@
 import WeftIR
 
-struct Def {
-  let name: String
-  let params: [String]
-  let body: Expr
-  let span: Span
+// MARK: - Hems
+
+public enum HemValue: Equatable {
+  case int(Int)
+  case float(Float)
+  case string(String)
+  case bool(Bool)
 }
 
-struct DestructureDef {
-  let names: [String]
-  let body: Expr
-  let span: Span
+public struct HemDecl {
+  public let name: String
+  public let width: Int?
+  public let op: String
+  public let args: [(String, HemValue)]
+  public let span: Span
 }
 
-enum TopLevel {
+// MARK: - Definitions
+
+public struct Def {
+  public let name: String
+  public let params: [String]
+  public let body: Expr
+  public let span: Span
+}
+
+public struct DestructureDef {
+  public let names: [String]
+  public let body: Expr
+  public let span: Span
+}
+
+public enum TopLevel {
   case def(Def)
   case destructure(DestructureDef)
+  case hem(HemDecl)
 }
 
 extension TopLevel {
@@ -23,11 +43,12 @@ extension TopLevel {
     switch self {
     case .def(let d): return d.span
     case .destructure(let d): return d.span
+    case .hem(let h): return h.span
     }
   }
 }
 
-enum Binding {
+public enum Binding {
   case bind(name: String, expr: Expr, span: Span)
   case destructure(names: [String], expr: Expr, span: Span)
   case coordBind(coord: String, expr: Expr, span: Span)
@@ -44,7 +65,7 @@ extension Binding {
     }
   }
 }
-indirect enum Expr {
+public indirect enum Expr {
   case number(Float, span: Span)
   case string(String, span: Span)
   case name(String, span: Span)

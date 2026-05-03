@@ -136,11 +136,108 @@ struct Parser {
     var result: [TopLevel] = []
     while currentKind != .eof {
       let before = pos
-      result.append(try parseDef())
-      assert(pos > before, "parseDef did not consume any tokens")
+      if currentKind == .hash {
+        result.append(try parseHem())
+      } else {
+        result.append(try parseDef())
+      }
+      assert(pos > before, "parse loop did not consume any tokens")
     }
     return result
   }
+
+  // MARK: Hems
+
+  mutating func parseHem() throws -> TopLevel {
+    let startTok = current
+    try expect(.hash)
+    let name = try expectName()
+
+    // Optional width assertion: [3]
+    var width: Int? = nil
+    if currentKind == .lbracket {
+      advance()
+      guard case .number(let f) = currentKind else {
+        throw error("expected integer width, got \(currentKind)")
+      }
+      let intVal = Int(f)
+      guard Float(intVal) == f && intVal > 0 else {
+        throw error("width must be a positive integer")
+      }
+      width = intVal
+      advance()
+      try expect(.rbracket)
+    }
+
+    try expect(.equals)
+    let op = try expectName()
+    try expect(.lparen)
+    let args = try parseHemArgs()
+    let endTok = current
+    try expect(.rparen)
+    try expect(.semicolon)
+
+    return .hem(HemDecl(
+      name: name,
+      width: width,
+      op: op,
+      args: args,
+      span: .merge(startTok.span, endTok.span)))
+  }
+
+  mutating func parseHemArgs() throws -> [(String, HemValue)] {
+    var args: [(String, HemValue)] = []
+    if currentKind == .rparen { return args }
+
+    while true {
+      let key = try expectName()
+      try expect(.colon)
+      let value = try parseHemValue()
+      args.append((key, value))
+      if currentKind == .comma {
+        advance()
+      } else {
+        break
+      }
+    }
+    return args
+  }
+
+  mutating func parseHemValue() throws -> HemValue {
+    switch currentKind {
+    case .number(let f):
+      advance()
+      let intVal = Int(f)
+      if Float(intVal) == f {
+        return .int(intVal)
+      }
+      return .float(f)
+    case .op(.minus):
+      advance()
+      guard case .number(let f) = currentKind else {
+        throw error("expected number after -")
+      }
+      advance()
+      let intVal = Int(f)
+      if Float(intVal) == f {
+        return .int(-intVal)
+      }
+      return .float(-f)
+    case .string(let s):
+      advance()
+      return .string(s)
+    case .name(let s) where s == "true":
+      advance()
+      return .bool(true)
+    case .name(let s) where s == "false":
+      advance()
+      return .bool(false)
+    default:
+      throw error("expected literal value (number, string, or bool), got \(currentKind)")
+    }
+  }
+
+  // MARK: Definitions
 
   mutating func parseDef() throws -> TopLevel {
     let startTok = current

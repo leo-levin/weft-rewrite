@@ -45,6 +45,7 @@ public enum IRNode: Hashable {
   case num(Float)
   case coord(String)
   case buffer(BufferID, indices: [ID])
+  case hemRead(name: String, indices: [ID])
   case tuple([ID])
   case index(ID, Int)
   case binOp(BinOp, ID, ID)

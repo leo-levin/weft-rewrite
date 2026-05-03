@@ -94,6 +94,18 @@ struct Lexer {
     case ";":
       advance()
       return .semicolon
+    case ":":
+      advance()
+      return .colon
+    case "#":
+      advance()
+      return .hash
+    case "[":
+      advance()
+      return .lbracket
+    case "]":
+      advance()
+      return .rbracket
     default:
       throw LexError(message: "unexpected character \(c)", loc: loc)
     }

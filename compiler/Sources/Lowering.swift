@@ -14,6 +14,7 @@ struct Env {
   var names: [String: ID] = [:]
   var coords: [String: ID] = [:]
   var funcs: [String: FuncDef] = [:]
+  var hems: Set<String> = []
   var resolving: [String: [String: ID]] = [:]
 }
 
@@ -79,6 +80,9 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
 
   case .name(let n, _):
     if let id = env.names[n] { return id }
+    if env.hems.contains(n) {
+      return builder.getNode(.hemRead(name: n, indices: []))
+    }
     if let def = env.funcs[n], def.params.isEmpty {
       return try lowerSignal(n, def: def, env: env, builder: builder)
     }
@@ -173,6 +177,8 @@ func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
         env.names[name] = indexID
         roots.append((name: name, id: indexID))
       }
+    case .hem(let h):
+      env.hems.insert(h.name)
     }
   }
 
