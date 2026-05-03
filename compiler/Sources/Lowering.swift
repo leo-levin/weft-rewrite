@@ -18,8 +18,8 @@ struct Env {
 class IRBuilder {
   var nodes: [IRNode] = []
   var memo: [IRNode: ID] = [:]
-  var feedbackSlots: [String: Int] = [:]
-  var feedbackWrites: [(slotID: Int, valueID: ID)] = []
+  var feedbackSlots: [String: (slotID: Int, indexCoords: [String])] = [:]
+  var feedbackWrites: [(slotID: Int, valueID: ID, indexCoords: [String])] = []
   private var nextSlotID = 0
 
   func getNode(_ node: IRNode) -> ID {
@@ -30,33 +30,36 @@ class IRBuilder {
     return id
   }
 
-  func allocateSlot(for name: String) -> Int {
-    if let existing = feedbackSlots[name] { return existing }
+  func allocateSlot(for name: String, indexCoords: [String]) -> Int {
+    if let existing = feedbackSlots[name] { return existing.slotID }
     let id = nextSlotID
     nextSlotID += 1
-    feedbackSlots[name] = id
+    feedbackSlots[name] = (slotID: id, indexCoords: indexCoords)
     return id
   }
 }
 
 func lowerSignal(_ name: String, def: FuncDef, env: Env, builder: IRBuilder) throws -> ID {
   if let snapshot = env.resolving[name] {
-    let slotID = builder.allocateSlot(for: name)
+    var indexCoords: [String] = []
     let indices = env.coords.compactMap { (coord, currentID) -> ID? in
       let rawCoord = builder.getNode(.coord(coord))
       let snapshotID = snapshot[coord] ?? rawCoord
-      return currentID != snapshotID ? currentID : nil
+      guard currentID != snapshotID else { return nil }
+      indexCoords.append(coord)
+      return currentID
     }
+    let slotID = builder.allocateSlot(for: name, indexCoords: indexCoords)
     return builder.getNode(.feedbackRead(slotID: slotID, indices: indices))
   }
 
   var newEnv = env
   newEnv.resolving[name] = env.coords
   let id = try lower(def.body, env: newEnv, builder: builder)
-  if let slotID = builder.feedbackSlots[name],
-    !builder.feedbackWrites.contains(where: { $0.slotID == slotID })
+  if let slot = builder.feedbackSlots[name],
+    !builder.feedbackWrites.contains(where: { $0.slotID == slot.slotID })
   {
-    builder.feedbackWrites.append((slotID: slotID, valueID: id))
+    builder.feedbackWrites.append((slotID: slot.slotID, valueID: id, indexCoords: slot.indexCoords))
   }
   return id
 }
@@ -153,7 +156,7 @@ func lower(_ expr: Expr, env: Env, builder: IRBuilder) throws -> ID {
 struct IRProgram {
   let builder: IRBuilder
   let roots: [(name: String, id: ID)]
-  var feedbackWrites: [(slotID: Int, valueID: ID)] { builder.feedbackWrites }
+  var feedbackWrites: [(slotID: Int, valueID: ID, indexCoords: [String])] { builder.feedbackWrites }
 }
 
 func lowerProgram(_ program: [TopLevel]) throws -> IRProgram {
