@@ -1,16 +1,11 @@
 import WeftIR
 
 public struct OutputContext {
-  public let rootID: ID
-  public let evaluate: (ID, [String: Float]) -> [Float]
-
-  public init(rootID: ID, evaluate: @escaping (ID, [String: Float]) -> [Float]) {
-    self.rootID = rootID
-    self.evaluate = evaluate
-  }
+  public let evaluate: ([String: Float]) -> [Float]
 }
 
-public protocol Output {
+protocol Output {
+  var rootName: String { get }  // "display", "play", "dmx"
   var groundedCoords: [String] { get }
   func start(context: OutputContext)
   func stop()
