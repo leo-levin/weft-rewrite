@@ -103,7 +103,8 @@ do {
   check(
     "nested remap",
     try runSignal(
-      source: "sig = @t * 3; shifted = sig where { @t = @t + 2; }; play = shifted where { @t = @t + 1; };",
+      source:
+        "sig = @t * 3; shifted = sig where { @t = @t + 2; }; play = shifted where { @t = @t + 1; };",
       output: "play", steps: 4
     ) { i in ["t": Float(i)] },
     [9, 12, 15, 18])  // (i+1+2)*3
