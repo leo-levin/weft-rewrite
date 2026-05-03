@@ -135,7 +135,5 @@ func prettyIRNode(_ node: IRNode) -> String {
     return "unOp(\(op), \(expr))"
   case .ifExpr(let cond, let then, let else_):
     return "ifExpr(cond: \(cond), then: \(then), else: \(else_))"
-  case .whereBind(let lhs, let bound, let body):
-    return "whereBind(\(lhs), bound: \(bound), body: \(body))"
   }
 }

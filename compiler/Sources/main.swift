@@ -1,21 +1,8 @@
 let source = """
-  xor(a, b) = (a + b) % 2;
+  sin(x)=x*x;
+  lfo = sin(@t * 0.5);
+  play = sin(440 * @t) * (lfo * 0.5 + 0.5);
 
-  bayer(ix, iy) = (8*xor(x0,y0) + 4*y0 + 2*xor(x1,y1) + y1) / 16
-    where {
-      x0 = ix % 2;
-      x1 = ix / 2 % 2;
-      y0 = iy % 2;
-      y1 = iy / 2 % 2;
-    };
-
-  display = if { lum > threshold } then { 1.0 } else { 0.0 }
-    where {
-      ix = @x * @w % 4;
-      iy = @y * @h % 4;
-      threshold = bayer(ix, iy);
-      lum = @x * 0.5;
-    };
   """
 
 do {
@@ -23,7 +10,7 @@ do {
   let tokens = try lexer.tokenize()
   var parser = Parser(tokens: tokens)
   let ast = try parser.parse()
-  let irProgram = lowerProgram(ast)
+  let irProgram = try lowerProgram(ast)
   func countNodes(_ expr: Expr) -> Int {
     switch expr {
     case .number, .string, .name, .coord:
@@ -63,8 +50,15 @@ do {
   print("IR nodes: \(irProgram.builder.nodes.count)")
   prettyPrint(ast)
   prettyPrintIR(irProgram)
+  print("\n=== SOURCE CODE === \n\(source)")
 } catch let e as LexError {
   print("lex error at \(e.loc.line):\(e.loc.column): \(e.message)")
 } catch let e as ParseError {
   print("parse error at \(e.loc.line):\(e.loc.column): \(e.message)")
+} catch let e as LoweringError {
+  let start = e.span.start
+  let end = e.span.end
+  print(
+    "lowering error at \(start.line):\(start.column)-\(end.line):\(end.column): \(e.message)"
+  )
 }
