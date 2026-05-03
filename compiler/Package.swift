@@ -3,10 +3,26 @@ import PackageDescription
 
 let package = Package(
     name: "compiler",
+    products: [
+        .library(name: "WeftCompiler", targets: ["WeftCompiler"]),
+    ],
+    dependencies: [
+        .package(path: "../ir"),
+        .package(path: "../runtime"),
+    ],
     targets: [
+        .target(
+            name: "WeftCompiler",
+            dependencies: [.product(name: "WeftIR", package: "ir")],
+            path: "Sources"
+        ),
         .executableTarget(
             name: "compiler",
-            path: "Sources"
-        )
+            dependencies: [
+                "WeftCompiler",
+                .product(name: "WeftRuntime", package: "runtime"),
+            ],
+            path: "CLI"
+        ),
     ]
 )

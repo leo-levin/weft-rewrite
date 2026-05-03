@@ -9,25 +9,26 @@ A ground-up rewrite of the WEFT compiler in Swift. The rewrite targets ~4000-450
 ## Development Commands
 
 ```bash
-# Build and run (from compiler/)
-cd compiler && swift run
-
-# Build only
-cd compiler && swift build
-
-# Run tests (none yet — test by modifying main.swift)
-cd compiler && swift run
+cd compiler && swift build   # build only
+cd compiler && swift run     # build + run; entry point is main.swift
 ```
+
+There is no test suite yet — exercise the compiler by editing the `source` literal in `main.swift` and re-running. `prettyPrint` (in `prettyprint.swift`) dumps the parsed AST.
 
 ## Compiler Pipeline
 
 ```
-Source → Lexer (Token.swift) → Parser (Parser.swift) → AST (AST.swift)
-       → Name Resolution (Resolution.swift) → IR (IR.swift)
+Source → Lexer (Lexer.swift, Token.swift) → Parser (Parser.swift) → AST (AST.swift)
+       → Name Resolution (Resolution.swift) → IR (IR.swift, Lowering.swift)
        → Shared Expression Compiler → Backend Leaf Translators
 ```
 
-**Current state:** Lexer and Parser are implemented. Resolution and IR lowering are stubs. No backends yet.
+**Current state:**
+- Lexer and Parser are implemented; `prettyprint.swift` renders the AST for debugging.
+- `Resolution.swift` is empty.
+- `IR.swift` drafts the `IRNode` enum, but supporting types (`ID`, `CoordKind`, `BufferID`, `BindLHS`, `BinOp`, `UnOp`) aren't defined yet — the file does not compile in isolation.
+- `Lowering.swift` has an `IRBuilder` skeleton that hash-conses nodes via `getNode(_:)`. No AST→IR walk yet.
+- No backends.
 
 ## Architecture
 
